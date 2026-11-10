@@ -151,6 +151,7 @@ def snapshot(event):
 def validate(output, expected):
     require(isinstance(output, dict) and isinstance(output.get("items"), list),
             "Missing safe-output items")
+    require(output.get("errors") == [], "Safe-output processing errors or missing error evidence")
     items = output["items"]
     require(len(items) == 1 and isinstance(items[0], dict)
             and items[0].get("type") == "publish_review",
@@ -261,6 +262,16 @@ def start(event):
     })
 
 
+def prepare(event):
+    repo, _, _, head = context(event)
+    check = current_check(repo, head)
+    require(check["status"] == "in_progress" and check["output"]["title"] == "Review pending",
+            "This attempt did not invalidate earlier verdicts; rerun all jobs")
+    Path("/tmp/gh-aw/review-input.json").write_text(
+        canonical(snapshot(event)), encoding="utf-8"
+    )
+
+
 def publish(event):
     repo, number, base, head = context(event)
     check = current_check(repo, head)
@@ -297,8 +308,9 @@ def publish(event):
                 "output": {"title": "Validated zero-violation review", "summary": summary},
             })
     except (GateError, ValueError, KeyError, TypeError, OSError, subprocess.CalledProcessError) as error:
+        message = str(error) if isinstance(error, GateError) else type(error).__name__
         update(repo, check, "failure", "Incomplete or invalid review",
-               f"No compliance approval was issued. {type(error).__name__}. "
+               f"No compliance approval was issued. {message}. "
                "Inspect the workflow logs; fix the infrastructure or review output and rerun.")
         raise
 
@@ -316,11 +328,14 @@ def finish(event):
             and check["output"]["title"] == "Policy violations")
     ):
         return
-    update(repo, check, "failure", "Review unavailable",
-           "Copilot analysis/publication did not complete. Configure the repository "
-           "Actions secret COPILOT_GITHUB_TOKEN using a Copilot-enabled account's "
-           "fine-grained PAT (Copilot Requests: Read), then rerun all jobs. "
-           "Provider errors, cancellation, missing output and incomplete reviews block.")
+    if check["status"] != "completed" or check["conclusion"] != "failure":
+        update(repo, check, "failure", "Review unavailable",
+               "Copilot analysis/publication did not complete. Inspect the linked workflow "
+               "for model, credential, provider, tool or output-validation errors. "
+               "For authentication failures, configure the repository "
+               "Actions secret COPILOT_GITHUB_TOKEN using a Copilot-enabled account's "
+               "fine-grained PAT (Copilot Requests: Read), then rerun all jobs. "
+               "Provider errors, cancellation, missing output and incomplete reviews block.")
     raise GateError("No complete review for this workflow attempt")
 
 
@@ -364,13 +379,8 @@ def lifecycle(event):
 def main():
     event = load_json(Path(os.environ["GITHUB_EVENT_PATH"]).read_text(encoding="utf-8"))
     command = sys.argv[1]
-    if command == "prepare":
-        Path("/tmp/gh-aw/review-input.json").write_text(
-            canonical(snapshot(event)), encoding="utf-8"
-        )
-    else:
-        {"start": start, "publish": publish, "finish": finish,
-         "lifecycle": lifecycle}[command](event)
+    {"start": start, "prepare": prepare, "publish": publish, "finish": finish,
+     "lifecycle": lifecycle}[command](event)
 
 
 if __name__ == "__main__":

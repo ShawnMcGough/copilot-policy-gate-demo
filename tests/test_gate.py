@@ -55,7 +55,7 @@ class GateTests(unittest.TestCase):
         }
 
     def output(self, report=None):
-        return {"items": [{"type": "publish_review", "report": json.dumps(
+        return {"errors": [], "items": [{"type": "publish_review", "report": json.dumps(
             self.report if report is None else report
         )}]}
 
@@ -78,7 +78,10 @@ class GateTests(unittest.TestCase):
                        {"items": self.output()["items"] * 2},
                        {"items": self.output()["items"] + [{"type": "error"}]}):
             with self.subTest(output=output), self.assertRaises(gate.GateError):
-                gate.validate(output, self.expected)
+                gate.validate(dict(output, errors=[]), self.expected)
+        for errors in (None, ["tool error"], False):
+            with self.assertRaises(gate.GateError):
+                gate.validate(dict(self.output(), errors=errors), self.expected)
 
     def test_malformed_incomplete_or_wrong_revision_cannot_pass(self):
         changes = [
@@ -134,6 +137,14 @@ class GateTests(unittest.TestCase):
         self.assertEqual(api.call_args_list[1].args[2]["status"], "in_progress")
         self.assertEqual(api.call_args_list[1].args[2]["head_sha"], "b" * 40)
 
+    def test_partial_rerun_cannot_start_inference_without_fresh_pending_check(self):
+        with patch.object(gate, "checks", return_value=[self.check]), \
+                patch.dict(os.environ, {"GITHUB_RUN_ATTEMPT": "2"}), \
+                patch.object(gate, "snapshot") as snapshot:
+            with self.assertRaises(gate.GateError):
+                gate.prepare(event())
+            snapshot.assert_not_called()
+
     def test_finish_missing_agent_or_output_blocks(self):
         for title in ("Review pending", "Validated zero-violation review"):
             self.check["output"]["title"] = title
@@ -156,6 +167,16 @@ class GateTests(unittest.TestCase):
             with patch.object(gate, "current_check", return_value=self.check), \
                     patch.dict(os.environ, {"JOB_RESULTS": json.dumps(results)}), \
                     patch.object(gate, "update") as update:
+                gate.finish(event())
+            update.assert_not_called()
+
+    def test_completion_preserves_specific_publication_failure(self):
+        self.check.update(status="completed", conclusion="failure")
+        self.check["output"]["title"] = "Incomplete or invalid review"
+        with patch.object(gate, "current_check", return_value=self.check), \
+                patch.dict(os.environ, {"JOB_RESULTS": '{"publish_review":{"result":"failure"}}'}), \
+                patch.object(gate, "update") as update:
+            with self.assertRaises(gate.GateError):
                 gate.finish(event())
             update.assert_not_called()
 
