@@ -59,6 +59,15 @@ This personal repository does not assume organization-billed
 `copilot-requests: write`. A secret name existing does not prove the PAT has a
 valid entitlement; the actual inference run must succeed.
 
+For **this repository**, setup is already active: the
+[main ruleset](https://github.com/ShawnMcGough/copilot-policy-gate-demo/rules/26989916)
+has an empty bypass list and both required checks bound to the observed GitHub
+Actions App ID **15368**. The scoped
+[Actions event policy](https://github.com/ShawnMcGough/copilot-policy-gate-demo/settings/actions/rules/12942)
+is active. Real Copilot inference succeeded with the configured repository
+secret; the owner only needs to maintain its entitlement, expiry and spending
+controls. An owner's harmless empty direct push was rejected with `GH013`.
+
 ## Demonstration
 
 Open the PR's **Checks** tab and the named check's **Details**. Findings contain
@@ -82,11 +91,26 @@ satisfy the required check. There are no path filters, including for docs change
 | Provider/model error correctly blocked | [Initial run](https://github.com/ShawnMcGough/copilot-policy-gate-demo/actions/runs/42911479190) |
 | Extra no-op output correctly rejected | [Output-contract run](https://github.com/ShawnMcGough/copilot-policy-gate-demo/actions/runs/42912960211) |
 | Base policy applied despite proposed weakening | [Actual SEC-001 findings](https://github.com/ShawnMcGough/copilot-policy-gate-demo/actions/runs/42913533578) |
+| Same-SHA agent-only rerun blocked before inference; full rerun recovered | [Safe run attempt history](https://github.com/ShawnMcGough/copilot-policy-gate-demo/actions/runs/42915214528) |
+| Corrected latest head passed after a rapid superseding commit | [Corrected run history](https://github.com/ShawnMcGough/copilot-policy-gate-demo/actions/runs/42916638580) |
+| Superseded review cancelled, never approved | [Cancelled older run](https://github.com/ShawnMcGough/copilot-policy-gate-demo/actions/runs/42916635829) |
 
 Use the latest required checks, not an earlier green run. The provider-error run
 used a retired model; the workflow now pins the advertised `claude-haiku-5.5`
 model through **Copilot**, not a separate Anthropic credential. Optional no-op
 output is disabled; it is not accepted as a compliance result.
+
+Live observations on November 10, 2026 included `CLEAN` merge eligibility for
+safe/corrected revisions and `BLOCKED` for SEC-001 violations. Full, agent-only,
+and conclusion-only same-SHA rerun probes reported `BLOCKED` immediately after
+the rerun request, even while raw check records still showed earlier successes.
+The agent-only partial rerun failed before inference; a complete rerun restored
+green. Run histories include intentional failures and cancellations.
+
+The focused local tests cover malformed/incomplete evidence, fork rejection,
+revision/attempt binding, docs/renames/deletions, base-policy selection and
+unsupported content/limits. These are deterministic tests, not claims that an
+outside-fork or every unsupported-file case was exercised live.
 
 ## Limits and failure recovery
 
@@ -104,7 +128,10 @@ output is disabled; it is not accepted as a compliance result.
 - Custom same-SHA rerun invalidation is event-driven, not atomic with the rerun click:
   GitHub must schedule the trusted lifecycle/start job. Do not merge while
   requesting a rerun. The native completion check is an additional safeguard,
-  but strict atomic rerun invalidation is not claimed by this demonstration.
+  and the live rerun probes were blocked, but those observations do not establish
+  a transactional guarantee for every scheduling/API race. **Strict atomic rerun
+  invalidation remains an unproven acceptance requirement**, not an approved
+  exception or a guarantee claimed by this demonstration.
 - A base update requires an up-to-date branch and fresh review. Push a fresh
   commit or use **Update branch** before rerunning when the base has changed.
 
