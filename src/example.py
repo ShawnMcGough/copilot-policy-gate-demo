@@ -8,3 +8,10 @@ def find_account(connection: sqlite3.Connection, email: str) -> tuple | None:
     return connection.execute(
         "SELECT id, email FROM accounts WHERE email = ?", (email,)
     ).fetchone()
+
+
+def find_account_by_id(connection: sqlite3.Connection, account_id: int) -> tuple | None:
+    """Keep identifier values separate from the query text, too."""
+    return connection.execute(
+        "SELECT id, email FROM accounts WHERE id = ?", (account_id,)
+    ).fetchone()
