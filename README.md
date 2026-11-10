@@ -4,8 +4,8 @@ A public, dependency-free demonstration of a **required security-compliance
 check**, not just an optional AI review comment. The standards are a fictional
 [public sample](security/organization-standards.md), never confidential policy.
 
-**Setup is in progress.** Live-run evidence and protection settings will be
-recorded below once verified. Do not treat the initial bootstrap as protected.
+See the live demonstration links below for the current verdict on each exact
+commit. A PR description or a green operational job is not a compliance verdict.
 
 ## How it works
 
@@ -31,6 +31,9 @@ A small trusted `workflow_run` lifecycle job releases success only after the
 analysis workflow finishes successfully. It also invalidates older rerun attempts
 and failed/cancelled runs. Results never move to a newer PR head. Operational jobs
 may be green while the required compliance check is red for a policy violation.
+The additional native **Policy review completion** check must also succeed; it
+runs even when dependencies fail or are skipped. Before inference, a read-only
+preflight verifies that this exact attempt established its new pending check.
 
 ## Owner setup
 
@@ -48,7 +51,8 @@ may be green while the required compliance check is red for a policy violation.
 4. After the one-time bootstrap and a genuine emitted check, activate the `main`
    ruleset: PR required, zero additional human approvals, required check named
    `Organization Security Standards` bound to its observed GitHub Actions App,
-   strict up-to-date branch requirement, no force push/deletion, **no bypasses**.
+   also require `Policy review completion` from that App, strict up-to-date
+   branches, no force push/deletion, **no bypasses**.
    Never disable protection to perform routine maintenance.
 
 This personal repository does not assume organization-billed
@@ -70,6 +74,20 @@ Demonstration PRs remain **unmerged**. No real credentials or deployed services
 are involved. Outside fork PRs are excluded from credentialed analysis and cannot
 satisfy the required check. There are no path filters, including for docs changes.
 
+| Demonstration | Live evidence |
+| --- | --- |
+| Safe parameter binding | [PR #1](https://github.com/ShawnMcGough/copilot-policy-gate-demo/pull/1) |
+| Unsafe SQL plus proposed policy weakening | [PR #4](https://github.com/ShawnMcGough/copilot-policy-gate-demo/pull/4) |
+| Unsafe-to-corrected sequence | [PR #5](https://github.com/ShawnMcGough/copilot-policy-gate-demo/pull/5) |
+| Provider/model error correctly blocked | [Initial run](https://github.com/ShawnMcGough/copilot-policy-gate-demo/actions/runs/42911479190) |
+| Extra no-op output correctly rejected | [Output-contract run](https://github.com/ShawnMcGough/copilot-policy-gate-demo/actions/runs/42912960211) |
+| Base policy applied despite proposed weakening | [Actual SEC-001 findings](https://github.com/ShawnMcGough/copilot-policy-gate-demo/actions/runs/42913533578) |
+
+Use the latest required checks, not an earlier green run. The provider-error run
+used a retired model; the workflow now pins the advertised `claude-haiku-5.5`
+model through **Copilot**, not a separate Anthropic credential. Optional no-op
+output is disabled; it is not accepted as a compliance result.
+
 ## Limits and failure recovery
 
 - Maximum 50 changed files, 256 KiB per text blob, 512 KiB serialized review
@@ -83,9 +101,10 @@ satisfy the required check. There are no path filters, including for docs change
   infrastructure. A partial rerun cannot reuse a previous attempt's approval.
 - Hard cancellation or GitHub/runner/API unavailability can leave a pending or
   missing check. This blocks merging; it is not converted into success.
-- Same-SHA rerun invalidation is event-driven, not atomic with the rerun click:
+- Custom same-SHA rerun invalidation is event-driven, not atomic with the rerun click:
   GitHub must schedule the trusted lifecycle/start job. Do not merge while
-  requesting a rerun; this scheduling window is a platform limitation.
+  requesting a rerun. The native completion check is an additional safeguard,
+  but strict atomic rerun invalidation is not claimed by this demonstration.
 - A base update requires an up-to-date branch and fresh review. Push a fresh
   commit or use **Update branch** before rerunning when the base has changed.
 

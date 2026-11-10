@@ -13,6 +13,7 @@ on:
 permissions:
   contents: read
   pull-requests: read
+  checks: read
 engine:
   id: copilot
   model: claude-haiku-5.5
@@ -85,6 +86,8 @@ jobs:
         run: python3 .github/gate.py finish
 safe-outputs:
   create-issue: false
+  noop: false
+  report-failure-as-issue: false
   jobs:
     publish-review:
       description: Submit exactly one complete structured policy review for this snapshot.
@@ -155,3 +158,5 @@ finding any violation. Use `complete: false` if any file, context or part of the
 analysis cannot be fully assessed. Never use noop, neutral, skipped, or absence
 of a report to indicate compliance. The trusted adapter, not you, chooses the
 Check conclusion. A successful tool invocation only queues a report.
+After submitting that one report, stop. Do not call another output tool to
+summarize the result: an extra output makes this review invalid.
