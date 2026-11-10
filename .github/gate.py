@@ -306,17 +306,22 @@ def publish(event):
 def finish(event):
     repo, _, _, head = context(event)
     check = current_check(repo, head)
-    if check["status"] != "completed":
-        results = json.loads(os.environ["JOB_RESULTS"])
-        if (check["output"]["title"] == "Validated zero-violation review"
-                and all(results.get(job, {}).get("result") == "success"
-                        for job in ("agent", "detection", "publish_review"))):
-            return
-        update(repo, check, "failure", "Review unavailable",
-               "Copilot analysis/publication did not complete. Configure the repository "
-               "Actions secret COPILOT_GITHUB_TOKEN using a Copilot-enabled account's "
-               "fine-grained PAT (Copilot Requests: Read), then rerun all jobs. "
-               "Provider errors, cancellation, missing output and incomplete reviews block.")
+    results = json.loads(os.environ["JOB_RESULTS"])
+    complete = all(results.get(job, {}).get("result") == "success"
+                   for job in ("begin_review", "agent", "detection", "publish_review", "safe_outputs"))
+    if complete and (
+        (check["status"] == "in_progress"
+         and check["output"]["title"] == "Validated zero-violation review")
+        or (check["status"] == "completed" and check["conclusion"] == "failure"
+            and check["output"]["title"] == "Policy violations")
+    ):
+        return
+    update(repo, check, "failure", "Review unavailable",
+           "Copilot analysis/publication did not complete. Configure the repository "
+           "Actions secret COPILOT_GITHUB_TOKEN using a Copilot-enabled account's "
+           "fine-grained PAT (Copilot Requests: Read), then rerun all jobs. "
+           "Provider errors, cancellation, missing output and incomplete reviews block.")
+    raise GateError("No complete review for this workflow attempt")
 
 
 def lifecycle(event):
@@ -340,8 +345,11 @@ def lifecycle(event):
             elif attempt == run["run_attempt"] and event["action"] == "completed":
                 newest = all(order(other) <= order(check) for other in checks(repo, head))
                 live = api("GET", f"/repos/{repo}/pulls/{pr['number']}")
-                base_current = live["base"]["sha"] == run["head_sha"]
-                if (newest and base_current and live["head"]["sha"] == head
+                recorded = [item for item in run.get("pull_requests", [])
+                            if item["number"] == pr["number"] and item["head"]["sha"] == head]
+                base_current = (len(recorded) == 1
+                                and live["base"]["sha"] == recorded[0]["base"]["sha"])
+                if (newest and base_current and live["head"]["sha"] == head == run["head_sha"]
                         and current["conclusion"] == "success"
                         and check["status"] == "in_progress"
                         and check["output"]["title"] == "Validated zero-violation review"):
