@@ -15,7 +15,7 @@ permissions:
   pull-requests: read
 engine:
   id: copilot
-  model: gpt-5.1-codex-mini
+  model: claude-haiku-5.5
   bare: true
   harness:
     max-retries: 0
@@ -64,9 +64,10 @@ jobs:
   detection:
     timeout-minutes: 10
   finish_review:
-    needs: [begin_review, agent, detection, publish_review]
+    name: Policy review completion
+    needs: [begin_review, agent, detection, publish_review, safe_outputs]
     detection-gate: status-only
-    if: always() && needs.begin_review.result == 'success'
+    if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 3
     permissions:

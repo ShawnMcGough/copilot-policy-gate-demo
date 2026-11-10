@@ -140,18 +140,36 @@ class GateTests(unittest.TestCase):
             with patch.object(gate, "current_check", return_value=self.check), \
                     patch.dict(os.environ, {"JOB_RESULTS": '{"agent":{"result":"failure"}}'}), \
                     patch.object(gate, "update") as update:
-                gate.finish(event())
+                with self.assertRaises(gate.GateError):
+                    gate.finish(event())
             self.assertEqual(update.call_args.args[2], "failure")
 
-    def lifecycle(self, conclusion, action="completed", attempt=1, title=None):
+    def test_completion_is_successful_for_a_complete_review_even_with_policy_findings(self):
+        for title, status, conclusion in (
+            ("Validated zero-violation review", "in_progress", None),
+            ("Policy violations", "completed", "failure"),
+        ):
+            self.check.update(status=status, conclusion=conclusion)
+            self.check["output"]["title"] = title
+            results = {job: {"result": "success"}
+                       for job in ("begin_review", "agent", "detection", "publish_review", "safe_outputs")}
+            with patch.object(gate, "current_check", return_value=self.check), \
+                    patch.dict(os.environ, {"JOB_RESULTS": json.dumps(results)}), \
+                    patch.object(gate, "update") as update:
+                gate.finish(event())
+            update.assert_not_called()
+
+    def lifecycle(self, conclusion, action="completed", attempt=1, title=None,
+                  live_base="a" * 40, recorded=True):
         run = {
             "id": 20, "path": gate.WORKFLOW, "event": "pull_request_target",
             "repository": {"full_name": "sample/repo"}, "run_attempt": attempt,
-            "head_sha": "a" * 40, "conclusion": conclusion,
+            "head_sha": "b" * 40, "conclusion": conclusion,
+            "pull_requests": [event()["pull_request"]] if recorded else [],
         }
         if title:
             self.check["output"]["title"] = title
-        pr = dict(event()["pull_request"])
+        pr = event(base=live_base)["pull_request"]
         def fake_api(method, route, body=None):
             if "/actions/runs/" in route:
                 return run
@@ -173,6 +191,12 @@ class GateTests(unittest.TestCase):
     def test_partial_rerun_invalidates_previous_attempt(self):
         self.check.update(status="completed", conclusion="success")
         self.assertEqual(self.lifecycle(None, action="in_progress", attempt=2).call_args.args[2],
+                         "failure")
+
+    def test_changed_base_or_missing_recorded_revision_blocks_release(self):
+        self.assertEqual(self.lifecycle("success", live_base="f" * 40).call_args.args[2],
+                         "failure")
+        self.assertEqual(self.lifecycle("success", recorded=False).call_args.args[2],
                          "failure")
 
     def test_sql_example_treats_injection_as_data(self):
@@ -226,6 +250,12 @@ class SnapshotTests(unittest.TestCase):
                     gate.snapshot(event(base, head))
                 with patch.object(gate, "MAX_BLOB", 2), self.assertRaises(gate.GateError):
                     gate.snapshot(event(base, head))
+                for content in (b"binary\0content", b"\xffinvalid UTF-8"):
+                    (root / "unsupported.bin").write_bytes(content)
+                    git("add", "unsupported.bin")
+                    git("commit", "-m", "unsupported data")
+                    with self.assertRaises(gate.GateError):
+                        gate.snapshot(event(base, git("rev-parse", "HEAD")))
 
 
 if __name__ == "__main__":
