@@ -26,8 +26,7 @@ event stream, not a policy verdict: `jq` extracts and validates the single
 assistant response after a clean CLI completion. There is no built-in
 fail-on-policy flag.
 
-Steps appear inside the job's **Details**, not as separate PR checks. There is no
-`gate.py`, generated workflow, lifecycle workflow, or custom Checks API publisher.
+Steps appear inside the job's **Details**, not as separate PR checks.
 The native job conclusion is the required check.
 
 ## Try the demo
@@ -41,9 +40,10 @@ Security Standard > Details** and its job summary.
 - Restore parameter binding and push a new commit: receive a fresh review.
 - Propose weaker policy alongside unsafe SQL: the base policy still applies.
 
-Existing demo PRs: [#4, unsafe SQL plus a proposed weaker policy](https://github.com/ShawnMcGough/copilot-policy-gate-demo/pull/4)
-and [#5, corrected SQL](https://github.com/ShawnMcGough/copilot-policy-gate-demo/pull/5).
-Their old runs demonstrate the previous implementation, not the new one-check UI.
+Demo PRs: [#16, safe parameterized SQL](https://github.com/ShawnMcGough/copilot-policy-gate-demo/pull/16)
+passes; [#17, intentionally unsafe SQL](https://github.com/ShawnMcGough/copilot-policy-gate-demo/pull/17)
+is blocked for **SEC-001** (high) at `src/example.py:22`. Each shows the single
+native **Organization Security Standard** check.
 
 ## Setup
 
@@ -51,53 +51,28 @@ Their old runs demonstrate the previous implementation, not the new one-check UI
    permissions > Copilot Requests: Read** as the Actions secret
    `COPILOT_GITHUB_TOKEN`. This personal-account demo does not use
    organization-billed `GITHUB_TOKEN` inference or a separate model-provider key.
-2. After a genuine run, require **Organization Security Standard** from the
+2. If an Actions event policy restricts workflow execution, allow
+   `pull_request_target` for `.github/workflows/security-compliance.yml`.
+3. After a genuine run, require **Organization Security Standard** from the
    observed GitHub Actions App (**15368** here) in the `main` ruleset. Keep PRs
    required, strict up-to-date checks, no force push/deletion, and no bypasses.
-3. Use trusted same-repository collaborators only. Fork PRs fail before
+4. Use trusted same-repository collaborators only. Fork PRs fail before
    credentialed analysis; the required job is not skipped to green.
 
-The repository secret and protected `main` already exist. Keep the token's
-entitlement, expiry, and spending controls current. The job has a ten-minute
-timeout and a thirty-AI-credit CLI limit; usage can still be billable.
+This repository already has the secret and
+[active `main` ruleset](https://github.com/ShawnMcGough/copilot-policy-gate-demo/rules/26989916)
+configured, with exactly one required **Organization Security Standard** check.
+Its [Actions event policy](https://github.com/ShawnMcGough/copilot-policy-gate-demo/settings/actions/rules/12942)
+admits `pull_request_target` only for `.github/workflows/security-compliance.yml`.
 
-### Activating this revision
-
-Until [PR #1](https://github.com/ShawnMcGough/copilot-policy-gate-demo/pull/1) is
-merged, `main` still runs the old `pull_request_target`/lifecycle workflows.
-The replacement cannot run until its YAML exists on `main`; changing the PR's
-workflow alone does not activate it. Its singular name avoids a collision with
-the old plural custom check. Historical checks, including earlier branch-based
-validation runs, do not disappear.
-
-The existing gate reviews the migration using `main`'s current policy and snapshot
-contract. Any failed or incomplete review remains blocking; do not bypass it.
-The replacement's positive/negative Actions verdicts and final one-check
-presentation must be verified after activation.
-
-With owner authorization, merge PR #1 **through the existing protections** after
-the current required checks pass. Migrate the scoped
-[Actions event policy 12942](https://github.com/ShawnMcGough/copilot-policy-gate-demo/settings/actions/rules/12942)
-from `.github/workflows/security-compliance.lock.yml` to
-`.github/workflows/security-compliance.yml`, retaining its `pull_request_target`
-admission rather than deleting the policy.
-
-Refresh the demo branches against the new base, preserving their unsafe/corrected
-examples, and verify the new native check's negative/positive verdicts. Then edit
-[ruleset 26989916](https://github.com/ShawnMcGough/copilot-policy-gate-demo/rules/26989916):
-atomically replace **both** old required contexts (**Organization Security
-Standards** and **Policy review completion**) with the verified native
-**Organization Security Standard** from App 15368. Preserve all other rules,
-strict up-to-date checks, and the empty bypass list.
-Do not disable protection or add a bypass to perform the transition.
-
-Use fresh PR revisions to verify the final one-check presentation. Until that
-transition is authorized and completed, do not claim the new UI is deployed
-repository-wide.
+Keep the token's entitlement, expiry, and spending controls current. The job has a
+ten-minute timeout and a thirty-AI-credit CLI limit; usage can still be billable.
 
 ## Deliberate limits
 
 This is a small **trusted-collaborator demo**, not production-grade enforcement.
+Same-repository admission limits credentialed, potentially billable runs; it is
+not a security guarantee or a defense against malicious collaborators.
 The workflow and policy come from the trusted base, so a PR cannot change its own
 evaluator. Administrators can change protections, and another workflow can use the
 same check name. Review workflow/policy changes carefully before merging them into
