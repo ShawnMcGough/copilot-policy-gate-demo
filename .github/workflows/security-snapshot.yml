@@ -1,4 +1,4 @@
-name: Copilot main snapshot audit
+name: Copilot Security Bot
 
 on:
   schedule:
