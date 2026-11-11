@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   review:
-    name: Organization Security Standards
+    name: Organization Security Standard
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -79,7 +79,8 @@ jobs:
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
           COPILOT_HOME: ${{ runner.temp }}/copilot-home
         run: |
-          if ! copilot --model claude-haiku-5.5 --silent --output-format json \
+          if ! copilot --model claude-haiku-5.5 --context long_context \
+            --silent --output-format json \
             --available-tools=none --disable-builtin-mcps --no-custom-instructions \
             --no-auto-update --max-ai-credits 30 \
             < prompt.txt > events.jsonl; then
@@ -114,7 +115,7 @@ jobs:
             exit 1
           fi
           jq -r '
-            "## Organization Security Standards\n",
+            "## Organization Security Standard\n",
             .summary,
             (.violations[] |
               "\n### \(.rule_id) (\(.severity)) - \(.path):\(.line)\n" +

@@ -1,6 +1,6 @@
 # Copilot + Markdown security policy
 
-One required check: **Organization Security Standards**.
+One required check: **Organization Security Standard**.
 GitHub Copilot reviews PR changes against a fictional
 [public Markdown policy](security/organization-standards.md). Violations make the
 Actions job fail and block merging into protected `main`.
@@ -32,7 +32,7 @@ The native job conclusion is the required check.
 ## Try the demo
 
 Open a same-repository PR targeting `main`, then open **Checks > Organization
-Security Standards > Details** and its job summary.
+Security Standard > Details** and its job summary.
 
 - Use parameterized SQL: pass.
 - Replace parameter binding with SQL string interpolation: fail **SEC-001**, with
@@ -50,7 +50,7 @@ Their old runs demonstrate the previous implementation, not the new one-check UI
    permissions > Copilot Requests: Read** as the Actions secret
    `COPILOT_GITHUB_TOKEN`. This personal-account demo does not use
    organization-billed `GITHUB_TOKEN` inference or a separate model-provider key.
-2. After a genuine run, require **Organization Security Standards** from the
+2. After a genuine run, require **Organization Security Standard** from the
    observed GitHub Actions App (**15368** here) in the `main` ruleset. Keep PRs
    required, strict up-to-date checks, no force push/deletion, and no bypasses.
 3. Use trusted same-repository collaborators only. Fork PRs fail before
@@ -64,14 +64,17 @@ timeout and a thirty-AI-credit CLI limit; usage can still be billable.
 
 Until [PR #1](https://github.com/ShawnMcGough/copilot-policy-gate-demo/pull/1) is
 merged, `main` still runs the old `pull_request_target`/lifecycle workflows, so
-transitional PRs show their extra checks alongside this new job. Historical
-checks do not disappear.
+transitional PRs show their extra checks alongside this new job. Its singular
+name avoids a collision with the old plural custom check. Historical checks do
+not disappear.
 
 With owner authorization, merge PR #1 **through the existing protections** after
 the current required checks pass. Then edit
 [ruleset 26989916](https://github.com/ShawnMcGough/copilot-policy-gate-demo/rules/26989916):
-remove only the obsolete **Policy review completion** requirement, retaining
-**Organization Security Standards** from App 15368 and all other protections.
+atomically replace **both** old required contexts (**Organization Security
+Standards** and **Policy review completion**) with the verified native
+**Organization Security Standard** from App 15368. Preserve all other rules,
+strict up-to-date checks, and the empty bypass list.
 The old scoped
 [Actions event policy 12942](https://github.com/ShawnMcGough/copilot-policy-gate-demo/settings/actions/rules/12942)
 can then be removed: this workflow uses `pull_request`, not `pull_request_target`.
