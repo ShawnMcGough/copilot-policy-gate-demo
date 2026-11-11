@@ -1,20 +1,20 @@
 # Copilot + Markdown security policy
 
 A deliberately simple demonstration of branch protection using GitHub Copilot
-and a Markdown security policy. Copilot reviews PR changes against a fictional
-[public Markdown policy](security/organization-standards.md). One required GitHub
+and an organization security standard in a Markdown file. Copilot reviews PR changes against a 
+[organization policy](security/organization-standards.md). One required GitHub
 Actions check, **Organization Security Standard**, fails and blocks merging into
-protected `main` when the policy is violated.
+protected `main` when the policy is violated via a GitHub Copilot review.
 
 ## How it works
 
-The ordinary [Actions workflow](.github/workflows/security-compliance.yml) has
+The [Actions workflow](.github/workflows/security-compliance.yml) has
 **one job**, with sequential steps. `pull_request_target` runs its YAML from the
 trusted base revision, not the PR's proposed workflow:
 
 1. Read the policy from the PR's trusted **base commit** and collect the PR diff
    with surrounding context. Proposed policy edits do not change this review.
-2. Run the official `@github/copilot` CLI with `claude-haiku-5.5`, using the existing
+2. Run the official `@github/copilot` CLI with `claude-haiku-5.5` (configurable), using the existing
    `COPILOT_GITHUB_TOKEN` secret. PR files are data: never checked out, installed,
    or executed. Copilot has no tools and loads no repository instructions.
 3. Validate Copilot's JSON response with a small inline `jq` check. Show findings
