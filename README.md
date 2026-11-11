@@ -68,8 +68,14 @@ transitional PRs show their extra checks alongside this new job. Its singular
 name avoids a collision with the old plural custom check. Historical checks do
 not disappear.
 
+The new job can also report **incomplete** while the base policy still requests
+the old snapshot identifiers. That is a blocked review, not a pass or an
+authentication failure; do not bypass the existing gate to resolve it.
+
 With owner authorization, merge PR #1 **through the existing protections** after
-the current required checks pass. Then edit
+the current required checks pass. Refresh the demo branches against the new
+base, preserving their unsafe/corrected examples, and verify the new native
+check's negative/positive verdicts. Then edit
 [ruleset 26989916](https://github.com/ShawnMcGough/copilot-policy-gate-demo/rules/26989916):
 atomically replace **both** old required contexts (**Organization Security
 Standards** and **Policy review completion**) with the verified native
@@ -80,10 +86,9 @@ The old scoped
 can then be removed: this workflow uses `pull_request`, not `pull_request_target`.
 Do not disable protection or add a bypass to perform the transition.
 
-Update the demo branches to the new `main` while retaining their unsafe/corrected
-examples, and push fresh revisions to verify the final one-check presentation.
-Until that transition is authorized and completed, do not claim the new UI is
-deployed repository-wide.
+Use fresh PR revisions to verify the final one-check presentation. Until that
+transition is authorized and completed, do not claim the new UI is deployed
+repository-wide.
 
 ## Deliberate limits
 
