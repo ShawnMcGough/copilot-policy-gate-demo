@@ -1,9 +1,10 @@
 # Copilot + Markdown security policy
 
-One required check: **Organization Security Standard**.
-GitHub Copilot reviews PR changes against a fictional
-[public Markdown policy](security/organization-standards.md). Violations make the
-Actions job fail and block merging into protected `main`.
+A deliberately simple demonstration of branch protection using GitHub Copilot
+and a Markdown security policy. Copilot reviews PR changes against a fictional
+[public Markdown policy](security/organization-standards.md). One required GitHub
+Actions check, **Organization Security Standard**, fails and blocks merging into
+protected `main` when the policy is violated.
 
 ## How it works
 
@@ -28,6 +29,39 @@ fail-on-policy flag.
 
 Steps appear inside the job's **Details**, not as separate PR checks.
 The native job conclusion is the required check.
+
+## Weekly main snapshot audit
+
+The separate [snapshot workflow](.github/workflows/security-snapshot.yml) runs
+**Mondays at 09:17 UTC** (`17 9 * * 1`). After it is merged into the default
+`main` branch, it can also be started through **Actions > Copilot main snapshot
+audit > Run workflow**, selecting **main**. Other dispatch refs are rejected
+before credentialed review. Scheduled runs can be delayed by GitHub.
+
+Each run resolves current `main` once and reads every tracked file and the policy
+from that commit as text, without executing snapshot code or dependencies.
+Unchanged problems are in scope, so a merged policy update applies to existing
+code at the next audit. Copilot uses the same pinned CLI/model, isolated no-tools
+review, token, ten-minute job timeout, and thirty-credit cap as the PR demo.
+The CLI has a five-minute deadline to leave time for reporting.
+
+Open **Main Security Snapshot Audit > Summary** for the commit, policy blob,
+file/line coverage inventory, findings, remediation, and **PASS**, **FAIL**,
+**INCOMPLETE**, or **ERROR** result. Violations, incomplete coverage, malformed
+output, and CLI failures fail the job. Raw snapshot content and CLI output are
+not published. This is reporting on already merged code, **not another required
+PR gate**; leave **Organization Security Standard** as the sole required check.
+
+This deliberately small audit rejects binary/non-UTF-8 files, symlinks,
+submodules, LFS pointers, and oversized input rather than skipping or truncating
+them. Limits are 200 tracked files, 128 KiB total file content, and 256 KiB of
+numbered review input. A complete inventory and Copilot's claimed coverage are
+not proof that no issues exist.
+
+If repository Actions event restrictions apply, an administrator must allow
+`schedule` and `workflow_dispatch` for the new workflow before it can run.
+This change does not modify event policies or branch protections, and does not
+activate a schedule until the workflow is on `main`.
 
 ## Try the demo
 
