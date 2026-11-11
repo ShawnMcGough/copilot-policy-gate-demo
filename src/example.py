@@ -15,3 +15,11 @@ def find_account_by_id(connection: sqlite3.Connection, account_id: int) -> tuple
     return connection.execute(
         "SELECT id, email FROM accounts WHERE id = ?", (account_id,)
     ).fetchone()
+
+
+def find_accounts_by_domain(connection: sqlite3.Connection, domain: str) -> list[tuple]:
+    """Intentionally vulnerable demo: do not use this SQL construction."""
+    return connection.execute(
+        "SELECT id, email FROM accounts "
+        f"WHERE substr(email, instr(email, '@') + 1) = '{domain}' ORDER BY id"
+    ).fetchall()
