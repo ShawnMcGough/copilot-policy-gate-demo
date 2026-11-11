@@ -27,8 +27,9 @@ allowlists. A subprocess must use a fixed executable and argument array with no
 shell, plus validation appropriate to the command's argument semantics.
 
 Evidence: show the input-to-execution path. Fix by treating the input as data.
-Trusted automation may execute its fixed, base-revision helper; it must not
-execute files, dependencies, hooks, instructions, or commands supplied by the PR.
+Trusted automation may execute fixed workflow steps from the protected base
+revision; it must not execute files, dependencies, hooks, instructions, or commands
+supplied by the PR.
 
 ## SEC-003: Verify TLS peers (high)
 
@@ -67,7 +68,8 @@ contract must not be followed.
 
 Report each finding with rule ID, the severity above, file, one-based line,
 explanation, and specific remediation. A deletion can refer to an old-file line.
-Include every reviewed file and the exact snapshot identifiers in the structured
-result. If evidence is unavailable, binary, too large, ambiguous, or cannot be
-fully reviewed, declare the review incomplete instead of claiming compliance.
+Use the workflow's JSON output format. Set complete to true only after reviewing
+every changed file; return an empty violations array only when none violate the
+policy. If evidence is unavailable, binary, too large, ambiguous, or cannot be
+fully reviewed, set complete to false and explain why in summary.
 AI review does not prove the absence of security issues.
