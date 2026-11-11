@@ -21,6 +21,9 @@ jobs:
       run:
         shell: bash
     steps:
+      # pull_request_target can access secrets and incur billed Copilot usage.
+      # Limit this demo to same-repository collaborators, not arbitrary fork PRs;
+      # origin alone is no security guarantee. Fail forks rather than skip green.
       - name: Require a same-repository PR
         env:
           HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
@@ -30,6 +33,8 @@ jobs:
             exit 1
           fi
 
+      # The base-owned workflow and checkout keep policy/evaluator under trusted
+      # control: proposed PR policy or workflow edits cannot review themselves.
       - name: Check out the trusted base, not PR code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -37,6 +42,8 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      # Read the base policy and untrusted PR diff as text. Fetch/diff does not
+      # check out or execute PR code; external diff/textconv helpers are disabled.
       - name: Load policy and PR changes as text
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -70,9 +77,13 @@ jobs:
             --rawfile changes "$RUNNER_TEMP/changes.diff" \
             '{policy: $policy, changes: $changes}' >> "$RUNNER_TEMP/prompt.txt"
 
+      # Install the pinned official CLI, not dependencies or scripts from the PR.
       - name: Install official Copilot CLI
         run: npm install --global @github/copilot@1.0.109
 
+      # Run outside the checkout with an isolated Copilot home. Disable tools,
+      # MCPs, and custom instructions to prevent tool execution and loading repo
+      # guidance; adversarial PR text can still influence the review.
       - name: Review with Copilot
         working-directory: ${{ runner.temp }}
         env:
@@ -90,6 +101,9 @@ jobs:
             exit 1
           fi
 
+      # A zero process exit is not compliance. Validate clean CLI completion and
+      # one well-formed report; only a complete review with zero violations passes.
+      # Errors and incomplete/malformed reports block the required native check.
       - name: Show findings and set the job verdict
         working-directory: ${{ runner.temp }}
         run: |
