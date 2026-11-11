@@ -84,6 +84,8 @@ jobs:
             --no-auto-update --max-ai-credits 30 \
             < prompt.txt > events.jsonl; then
             echo "Copilot CLI failed; no compliance verdict was accepted." | tee -a "$GITHUB_STEP_SUMMARY"
+            jq -r 'select(.type == "session.error") | .data.message' events.jsonl \
+              | tee -a "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
 
