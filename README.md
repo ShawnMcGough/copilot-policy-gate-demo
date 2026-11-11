@@ -8,7 +8,8 @@ Actions job fail and block merging into protected `main`.
 ## How it works
 
 The ordinary [Actions workflow](.github/workflows/security-compliance.yml) has
-**one job**, with sequential steps:
+**one job**, with sequential steps. `pull_request_target` runs its YAML from the
+trusted base revision, not the PR's proposed workflow:
 
 1. Read the policy from the PR's trusted **base commit** and collect the PR diff
    with surrounding context. Proposed policy edits do not change this review.
@@ -63,27 +64,31 @@ timeout and a thirty-AI-credit CLI limit; usage can still be billable.
 ### Activating this revision
 
 Until [PR #1](https://github.com/ShawnMcGough/copilot-policy-gate-demo/pull/1) is
-merged, `main` still runs the old `pull_request_target`/lifecycle workflows, so
-transitional PRs show their extra checks alongside this new job. Its singular
-name avoids a collision with the old plural custom check. Historical checks do
-not disappear.
+merged, `main` still runs the old `pull_request_target`/lifecycle workflows.
+The replacement cannot run until its YAML exists on `main`; changing the PR's
+workflow alone does not activate it. Its singular name avoids a collision with
+the old plural custom check. Historical checks, including earlier branch-based
+validation runs, do not disappear.
 
-The new job can also report **incomplete** while the base policy still requests
-the old snapshot identifiers. That is a blocked review, not a pass or an
-authentication failure; do not bypass the existing gate to resolve it.
+The existing gate reviews the migration using `main`'s current policy and snapshot
+contract. Any failed or incomplete review remains blocking; do not bypass it.
+The replacement's positive/negative Actions verdicts and final one-check
+presentation must be verified after activation.
 
 With owner authorization, merge PR #1 **through the existing protections** after
-the current required checks pass. Refresh the demo branches against the new
-base, preserving their unsafe/corrected examples, and verify the new native
-check's negative/positive verdicts. Then edit
+the current required checks pass. Migrate the scoped
+[Actions event policy 12942](https://github.com/ShawnMcGough/copilot-policy-gate-demo/settings/actions/rules/12942)
+from `.github/workflows/security-compliance.lock.yml` to
+`.github/workflows/security-compliance.yml`, retaining its `pull_request_target`
+admission rather than deleting the policy.
+
+Refresh the demo branches against the new base, preserving their unsafe/corrected
+examples, and verify the new native check's negative/positive verdicts. Then edit
 [ruleset 26989916](https://github.com/ShawnMcGough/copilot-policy-gate-demo/rules/26989916):
 atomically replace **both** old required contexts (**Organization Security
 Standards** and **Policy review completion**) with the verified native
 **Organization Security Standard** from App 15368. Preserve all other rules,
 strict up-to-date checks, and the empty bypass list.
-The old scoped
-[Actions event policy 12942](https://github.com/ShawnMcGough/copilot-policy-gate-demo/settings/actions/rules/12942)
-can then be removed: this workflow uses `pull_request`, not `pull_request_target`.
 Do not disable protection or add a bypass to perform the transition.
 
 Use fresh PR revisions to verify the final one-check presentation. Until that
@@ -93,10 +98,10 @@ repository-wide.
 ## Deliberate limits
 
 This is a small **trusted-collaborator demo**, not production-grade enforcement.
-`pull_request` uses the PR's workflow definition: a collaborator who can change
-workflows can change the evaluator. Administrators can change protections, and
-another workflow can use the same check name. Review workflow/policy changes
-carefully; this is not tamper-proof enforcement against those actors.
+The workflow and policy come from the trusted base, so a PR cannot change its own
+evaluator. Administrators can change protections, and another workflow can use the
+same check name. Review workflow/policy changes carefully before merging them into
+the protected base; this is not tamper-proof enforcement against trusted actors.
 
 Copilot can miss issues or be influenced by adversarial text. Green means a
 complete review reported no violations, not proof of secure code. Large or

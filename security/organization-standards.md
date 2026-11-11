@@ -27,8 +27,9 @@ allowlists. A subprocess must use a fixed executable and argument array with no
 shell, plus validation appropriate to the command's argument semantics.
 
 Evidence: show the input-to-execution path. Fix by treating the input as data.
-Trusted automation may execute its fixed workflow steps; it must not
-execute files, dependencies, hooks, instructions, or commands supplied by the PR.
+Trusted automation may execute fixed workflow steps from the protected base
+revision; it must not execute files, dependencies, hooks, instructions, or commands
+supplied by the PR.
 
 ## SEC-003: Verify TLS peers (high)
 
